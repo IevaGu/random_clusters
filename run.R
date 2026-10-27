@@ -4,7 +4,7 @@ library(argparse)
 library(jsonlite)
 library(zellkonverter)
 
-parser <- ArgumentParser(description = "Benchmarking entrypoint")
+parser <- ArgumentParser(description = "Random clustering baseline")
 
 parser$add_argument(
   "--output_dir", "-o",
@@ -34,7 +34,7 @@ parser$add_argument(
   "--method_name",
   dest = "method_name", type = "character",
   help = "name of the method",
-  choices = c("osca", "scrapper", "seurat"), required = TRUE
+  choices = c("random"), required = TRUE
 )
 parser$add_argument(
   "--d_cluster",
@@ -43,29 +43,10 @@ parser$add_argument(
   required = TRUE
 )
 parser$add_argument(
-  "--n_comp",
-  dest = "n_comp", type = "integer",
-  help = "number of PCA components to use for KNN graph construction",
-  default = 50, required = FALSE
-)
-parser$add_argument(
-  "--n_neig",
-  dest = "n_neig", type = "integer",
-  help = "number of neighbors to use for KNN graph construction",
-  default = 15, required = FALSE
-)
-parser$add_argument(
-  "--n_hvg",
-  dest = "n_hvg", type = "integer",
-  help = "number of highly variable genes to use",
-  default = 1000, required = FALSE
-)
-parser$add_argument(
-  "--filter",
-  dest = "filter", type = "character",
-  help = "filtering (manual uses suggested cutoffs, auto uses package QC)",
-  choices = c("manual", "auto"),
-  default = "manual", required = FALSE
+  "--seed",
+  dest = "seed", type = "integer",
+  help = "random seed",
+  required = TRUE
 )
 
 args <- parser$parse_args()
@@ -75,13 +56,7 @@ m <- grep("--file=", cargs)
 run_dir <- dirname(gsub("--file=", "", cargs[[m]]))
 
 timings_path <- file.path(args$output_dir, paste0(args$name, ".timings.json"))
-clustering_info_path <- file.path(args$output_dir, paste0(args$name, ".clustering_info.json"))
 clusters_path <- file.path(args$output_dir, paste0(args$name, ".clusters.tsv"))
-pca_path <- file.path(args$output_dir, paste0(args$name, ".pca.tsv"))
-hvgs_path <- file.path(args$output_dir, paste0(args$name, ".hvgs.tsv"))
-
-search_res_path <- file.path(run_dir, "search_res.r")
-source(search_res_path)
 
 sce <- readH5AD(args$data_path, reader = "python")
 clusters_truth_num <- as.integer(readLines(args$clusters_truth_num_path, n = 1))
@@ -89,41 +64,18 @@ n_cluster <- clusters_truth_num + args$d_cluster
 
 # time object to store time involved (in seconds) in each step
 time <- list(
-  gpu_load = NA_real_, find_mit_gene = NA_real_, filter = NA_real_, normalization = NA_real_,
-  hvg = NA_real_, scaling = NA_real_, pca = NA_real_,
-  t_sne = NA_real_, umap = NA_real_,
-  louvain = NA_real_, leiden = NA_real_
-)
-
-clustering_info <- list(
-  resolutions = list(louvain = NA_real_, leiden = NA_real_),
-  num_runs = list(louvain = NA_integer_, leiden = NA_integer_)
+  random = NA_real_
 )
 
 # source and run appropriate method
-if (args$method_name == "seurat") {
-  seurat_r_path <- file.path(run_dir, "seurat.R")
-  source(seurat_r_path)
-  output_data <- run_seurat(
+if (args$method_name == "random") {
+  random_r_path <- file.path(run_dir, "random.R")
+  source(random_r_path)
+  output_data <- run_random(
     sce,
-    n_cluster, args$n_comp, args$n_neig, args$n_hvg, args$filter,
-    time, clustering_info
-  )
-} else if (args$method_name == "osca") {
-  osca_r_path <- file.path(run_dir, "OSCA.R")
-  source(osca_r_path)
-  output_data <- run_osca(
-    sce,
-    n_cluster, args$n_comp, args$n_neig, args$n_hvg, args$filter,
-    time, clustering_info
-  )
-} else if (args$method_name == "scrapper") {
-  scrapper_r_path <- file.path(run_dir, "scrapper.R")
-  source(scrapper_r_path)
-  output_data <- run_scrapper(
-    sce,
-    n_cluster, args$n_comp, args$n_neig, args$n_hvg, args$filter,
-    time, clustering_info
+    n_cluster,
+    args$seed,
+    time
   )
 }
 
@@ -135,30 +87,12 @@ write_json(
   output_data$time, timings_path,
   auto_unbox = TRUE, pretty = TRUE
 )
-write_json(
-  output_data$clustering_info, clustering_info_path,
-  auto_unbox = TRUE, pretty = TRUE
-)
 write.table(
   data.frame(
     cell_id = output_data$cell_ids,
-    louvain = output_data$louvain, leiden = output_data$leiden
+    clusters = output_data$clusters
   ),
   clusters_path,
   sep = "\t", quote = F, row.names = F
 )
-output_data$pca <- data.frame(
-  cell_id = rownames(output_data$pca),
-  output_data$pca
-)
-colnames(output_data$pca) <- c(
-  "cell_id",
-  paste0("PC", seq_len(ncol(output_data$pca) - 1))
-)
-write.table(
-  output_data$pca, pca_path,
-  sep = "\t", quote = F, row.names = F
-)
 cat(str(output_data))
-cat(str(output_data$hvgs))
-writeLines(output_data$hvgs, file(hvgs_path))
