@@ -101,7 +101,8 @@ write_json(
 write.table(
   data.frame(
     cell_id = output_data$cell_ids,
-    leiden = output_data$clusters
+    leiden = output_data$clusters,
+    louvain = output_data$clusters
   ),
   clusters_path,
   sep = "\t", quote = F, row.names = F
