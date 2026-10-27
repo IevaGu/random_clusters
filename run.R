@@ -34,7 +34,7 @@ parser$add_argument(
   "--method_name",
   dest = "method_name", type = "character",
   help = "name of the method",
-  choices = c("random"), required = TRUE
+  required = TRUE
 )
 parser$add_argument(
   "--d_cluster",
