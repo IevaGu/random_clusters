@@ -56,7 +56,9 @@ m <- grep("--file=", cargs)
 run_dir <- dirname(gsub("--file=", "", cargs[[m]]))
 
 timings_path <- file.path(args$output_dir, paste0(args$name, ".timings.json"))
+clustering_info_path <- file.path(args$output_dir, paste0(args$name, ".clustering_info.json"))
 clusters_path <- file.path(args$output_dir, paste0(args$name, ".clusters.tsv"))
+pca_path <- file.path(args$output_dir, paste0(args$name, ".pca.tsv"))
 
 sce <- readH5AD(args$data_path, reader = "python")
 clusters_truth_num <- as.integer(readLines(args$clusters_truth_num_path, n = 1))
@@ -65,6 +67,11 @@ n_cluster <- clusters_truth_num + args$d_cluster
 # time object to store time involved (in seconds) in each step
 time <- list(
   random = NA_real_
+)
+
+clustering_info <- list(
+  resolutions = list(),
+  num_runs = list(random = 1)
 )
 
 # source and run appropriate method
@@ -87,6 +94,10 @@ write_json(
   output_data$time, timings_path,
   auto_unbox = TRUE, pretty = TRUE
 )
+write_json(
+  clustering_info, clustering_info_path,
+  auto_unbox = TRUE, pretty = TRUE
+)
 write.table(
   data.frame(
     cell_id = output_data$cell_ids,
@@ -94,5 +105,16 @@ write.table(
   ),
   clusters_path,
   sep = "\t", quote = F, row.names = F
+)
+pca <- data.frame(
+  cell_id = output_data$cell_ids,
+  PC1 = 0
+)
+write.table(
+  pca,
+  pca_path,
+  sep = "\t",
+  quote = FALSE,
+  row.names = FALSE
 )
 cat(str(output_data))

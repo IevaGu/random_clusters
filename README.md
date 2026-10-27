@@ -2,7 +2,7 @@
 
 This repository contains a simple random clustering method implemented as an OmniBenchmark module.
 
-The method serves as a baseline for evaluating clustering performance. Each cell is assigned randomly to one of a predefined number of clusters, allowing the resulting Adjusted Rand Index (ARI) to be compared with clustering methods such as Leiden.
+The method serves as a baseline for evaluating clustering performance. Each cell is assigned randomly to one of a predefined number of clusters, allowing the resulting Adjusted Rand Index (ARI) to be compared with data-driven clustering methods such as Leiden.
 
 ## Method
 
@@ -20,9 +20,10 @@ A random seed is provided as a parameter to ensure reproducibility.
 
 ```text
 .
-├── run.R        # OmniBenchmark entry point
-├── random.R     # Random clustering implementation
-├── environment.yml
+├── run.R               # OmniBenchmark entry point
+├── random.R            # Random clustering implementation
+├── omnibenchmark.yaml  # OmniBenchmark module configuration
+├── .gitignore          # Files and directories excluded from version control
 └── README.md
 ```
 
@@ -63,6 +64,8 @@ The module produces:
 
 - `*.clusters.tsv` — cell IDs and their randomly assigned cluster labels
 - `*.timings.json` — runtime information for the clustering step
+- `*.clustering_info.json` — minimal clustering metadata required by the benchmark interface
+- `*.pca.tsv` — placeholder PCA output required by the benchmark interface
 
 The cluster output can subsequently be evaluated using OmniBenchmark metrics such as the Adjusted Rand Index (ARI).
 
